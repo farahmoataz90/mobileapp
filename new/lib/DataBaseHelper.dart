@@ -1,146 +1,89 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+// import 'package:sembast/sembast.dart';
+// import 'package:sembast/sembast_io.dart';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._init();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static Database? _database;
-
-  DatabaseHelper._init();
-
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-
-    _database = await _initDB('shopping_cart.db');
-    return _database!;
-  }
-
-  Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
-  }
-
-  Future<void> _createDB(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE favorites(
-        id INTEGER PRIMARY KEY,
-        userId TEXT,
-        productId INTEGER,
-        title TEXT,
-        price REAL,
-        image TEXT
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE cart(
-        id INTEGER PRIMARY KEY,
-        userId TEXT,
-        productId INTEGER,
-        title TEXT,
-        price REAL,
-        image TEXT
-      )
-    ''');
-  }
-
-  final _favoriteNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
-  final _cartNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
-
-  ValueListenable<List<Map<String, dynamic>>> get favoriteNotifier =>
-      _favoriteNotifier;
-
-  ValueListenable<List<Map<String, dynamic>>> get cartNotifier => _cartNotifier;
-
-  Future<int> insertFavorite(Map<String, dynamic> product) async {
-    final db = await instance.database;
-    final id = await db.insert('favorites', product);
-    _updateFavorites();
-    return id;
-  }
-
-  Future<int> insertCartItem(Map<String, dynamic> product) async {
-    final db = await instance.database;
-    final id = await db.insert('cart', product);
-    _updateCart();
-    return id;
-  }
-
-  Future<List<Map<String, dynamic>>> getUserFavorites(String userId) async {
-    final db = await instance.database;
-    return await db.query('favorites', where: 'userId = ?', whereArgs: [userId]);
-  }
-
-  Future<List<Map<String, dynamic>>> getUserCart(String userId) async {
-    final db = await instance.database;
-    return await db.query('cart', where: 'userId = ?', whereArgs: [userId]);
-  }
-
-  Future<bool> isFavorite(String userId, int productId) async {
-    final db = await instance.database;
-    final result = await db.query(
-      'favorites',
-      where: 'userId = ? AND productId = ?',
-      whereArgs: [userId, productId],
-    );
-    return result.isNotEmpty;
-  }
-
-  Future<bool> isCartItem(String userId, int productId) async {
-    final db = await instance.database;
-    final result = await db.query(
-      'cart',
-      where: 'userId = ? AND productId = ?',
-      whereArgs: [userId, productId],
-    );
-    return result.isNotEmpty;
-  }
-
-  Future<int> deleteFavorite(String userId, int productId) async {
-    final db = await instance.database;
-    final result = await db.delete(
-      'favorites',
-      where: 'userId = ? AND productId = ?',
-      whereArgs: [userId, productId],
-    );
-    _updateFavorites();
-    return result;
-  }
-
-  Future<int> deleteCartItem(String userId, int productId) async {
-    final db = await instance.database;
-    final result = await db.delete(
-      'cart',
-      where: 'userId = ? AND productId = ?',
-      whereArgs: [userId, productId],
-    );
-    _updateCart();
-    return result;
-  }
-
-  Future<void> _updateFavorites() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userId = user.uid;
-      final loadedFavorites = await getUserFavorites(userId);
-      _favoriteNotifier.value = loadedFavorites;
+  // Add a product to the cart
+  Future<void> addToCart(String userId, Map<String, dynamic> product) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .add(product);
+    } catch (e) {
+      throw Exception('Error adding to cart: $e');
     }
   }
 
-  Future<void> _updateCart() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userId = user.uid;
-      final loadedCart = await getUserCart(userId);
-      _cartNotifier.value = loadedCart;
+  // Get the user's cart items
+  Stream<List<Map<String, dynamic>>> getCartItems(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => doc.data()..['id'] = doc.id).toList());
+  }
+
+  // Remove an item from the cart
+  Future<void> removeFromCart(String userId, String itemId) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .doc(itemId)
+          .delete();
+    } catch (e) {
+      throw Exception('Error removing from cart: $e');
+    }
+  }
+
+  // Clear the cart
+  Future<void> clearCart(String userId) async {
+    try {
+      final cartItems = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .get();
+      for (var doc in cartItems.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      throw Exception('Error clearing cart: $e');
+    }
+  }
+
+   // Get user's favorite items
+  Stream<List<Map<String, dynamic>>> getUserFavorites(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => doc.data()..['id'] = doc.id).toList());
+  }
+  // Delete a favorite item
+  Future<void> deleteFavorite(String userId, String favoriteId) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('favorites')
+          .doc(favoriteId)
+          .delete();
+    } catch (e) {
+      throw Exception('Error removing favorite: $e');
     }
   }
 }

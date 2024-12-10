@@ -15,17 +15,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   
-// heeeeeeeeeeeeree
-if (kIsWeb)
-{
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-}else{
-  await Firebase.initializeApp();
-}
-// end here 
+
   
   runApp( MyApp());
 }

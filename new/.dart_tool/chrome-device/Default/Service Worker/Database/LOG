@@ -1,3 +1,2 @@
-2024/12/09-19:12:30.889 2d78 Reusing MANIFEST C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.b9522708\flutter_tools_chrome_device.982614d3\Default\Service Worker\Database/MANIFEST-000001
-2024/12/09-19:12:30.900 2d78 Recovering log #3
-2024/12/09-19:12:30.901 2d78 Reusing old log C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.b9522708\flutter_tools_chrome_device.982614d3\Default\Service Worker\Database/000003.log 
+2024/12/10-20:32:53.002 2d24 Creating DB C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.9b1d8799\flutter_tools_chrome_device.cea4c55f\Default\Service Worker\Database since it was missing.
+2024/12/10-20:32:53.010 2d24 Reusing MANIFEST C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.9b1d8799\flutter_tools_chrome_device.cea4c55f\Default\Service Worker\Database/MANIFEST-000001

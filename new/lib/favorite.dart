@@ -8,42 +8,37 @@ class Favorite extends StatefulWidget {
 }
 
 class _FavoriteState extends State<Favorite> {
+  final DatabaseHelper _databaseHelper = DatabaseHelper();
   List<Map<String, dynamic>> favorites = [];
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
-    DatabaseHelper.instance.favoriteNotifier.addListener(_onFavoritesChanged);
-  }
-
-  @override
-  void dispose() {
-    DatabaseHelper.instance.favoriteNotifier.removeListener(_onFavoritesChanged);
-    super.dispose();
-  }
-
-  void _onFavoritesChanged() {
-    _loadFavorites();
   }
 
   Future<void> _loadFavorites() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final userId = user.uid;
-      final loadedFavorites = await DatabaseHelper.instance.getUserFavorites(userId);
-      setState(() {
-        favorites = loadedFavorites;
-      });
-    }
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    final userId = user.uid;
+    _databaseHelper.getUserFavorites(userId).listen((loadedFavorites) {
+      if (loadedFavorites.isNotEmpty) {
+        setState(() {
+          favorites = loadedFavorites;
+        });
+      } else {
+        setState(() {
+          favorites = [];
+        });
+      }
+    });
   }
-
-  void _removeFavorite(int productId) async {
+}
+  void _removeFavorite(String favoriteId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final userId = user.uid;
-      await DatabaseHelper.instance.deleteFavorite(userId, productId);
-      _loadFavorites();
+      await _databaseHelper.deleteFavorite(userId, favoriteId);
     }
   }
 
@@ -52,41 +47,41 @@ class _FavoriteState extends State<Favorite> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration:const BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [
                 Color(0xFF22223B),
-              Color(0xff4A4E69),
-              Color(0xff9A8C98),
-              Color(0xffC9ADA7),
-              Color(0xffF2E9E4)
+                Color(0xff4A4E69),
+                Color(0xff9A8C98),
+                Color(0xffC9ADA7),
+                Color(0xffF2E9E4),
               ],
             ),
           ),
         ),
-        title: Text('Favorites'),
+        title: const Text('Favorites'),
       ),
       body: favorites.isEmpty
-          ? Center(
-        child: Text('You have no favorite items yet.'),
-      )
+          ? const Center(
+              child: Text('You have no favorite items yet.'),
+            )
           : ListView.builder(
-        itemCount: favorites.length,
-        itemBuilder: (context, index) {
-          final favorite = favorites[index];
-          return ListTile(
-            leading: Image.network(favorite['image']),
-            title: Text(favorite['title']),
-            subtitle: Text('\$${favorite['price']}'),
-            trailing: IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                _removeFavorite(favorite['productId']);
+              itemCount: favorites.length,
+              itemBuilder: (context, index) {
+                final favorite = favorites[index];
+                return ListTile(
+                  leading: Image.network(favorite['image']),
+                  title: Text(favorite['title']),
+                  subtitle: Text('\$${favorite['price']}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      _removeFavorite(favorite['id']); // Use Firestore document ID
+                    },
+                  ),
+                );
               },
             ),
-          );
-        },
-      ),
     );
   }
 }

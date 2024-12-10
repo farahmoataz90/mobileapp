@@ -1,5 +1,2 @@
-2024/12/09-19:12:31.109 156c Reusing MANIFEST C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.b9522708\flutter_tools_chrome_device.982614d3\Default\shared_proto_db/MANIFEST-000001
-2024/12/09-19:12:31.110 156c Recovering log #7
-2024/12/09-19:12:31.111 156c Reusing old log C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.b9522708\flutter_tools_chrome_device.982614d3\Default\shared_proto_db/000007.log 
-2024/12/09-19:12:31.112 156c Delete type=0 #3
-2024/12/09-19:12:31.112 156c Delete type=0 #4
+2024/12/10-20:32:52.327 296c Creating DB C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.9b1d8799\flutter_tools_chrome_device.cea4c55f\Default\shared_proto_db since it was missing.
+2024/12/10-20:32:52.341 296c Reusing MANIFEST C:\Users\Lenovo\AppData\Local\Temp\flutter_tools.9b1d8799\flutter_tools_chrome_device.cea4c55f\Default\shared_proto_db/MANIFEST-000001

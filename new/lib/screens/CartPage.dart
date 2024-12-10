@@ -8,49 +8,28 @@ class CartPage extends StatefulWidget {
 }
 
 class _CartPageState extends State<CartPage> {
-  List<Map<String, dynamic>> cartItems = [];
+  late Stream<List<Map<String, dynamic>>> cartStream;
 
   @override
   void initState() {
     super.initState();
-    _loadCartItems();
-    DatabaseHelper.instance.cartNotifier.addListener(_onCartChanged);
-  }
-
-  @override
-  void dispose() {
-    DatabaseHelper.instance.cartNotifier.removeListener(_onCartChanged);
-    super.dispose();
-  }
-
-  void _onCartChanged() {
-    _loadCartItems();
-  }
-
-  Future<void> _loadCartItems() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userId = user.uid;
-      final loadedCartItems = await DatabaseHelper.instance.getUserCart(userId);
-      setState(() {
-        cartItems = loadedCartItems;
-      });
+      cartStream = DatabaseHelper().getCartItems(user.uid);
     }
   }
 
-  void _removeCartItem(int productId) async {
+  void _removeCartItem(String itemId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final userId = user.uid;
-      await DatabaseHelper.instance.deleteCartItem(userId, productId);
-      _loadCartItems();
+      await DatabaseHelper().removeFromCart(user.uid, itemId);
     }
   }
 
-  double calculateTotalPrice() {
+  double calculateTotalPrice(List<Map<String, dynamic>> cartItems) {
     double totalPrice = 0.0;
     for (final cartItem in cartItems) {
-      totalPrice += cartItem['price'];
+      totalPrice += cartItem['price'] ?? 0.0;
     }
     return totalPrice;
   }
@@ -72,99 +51,99 @@ class _CartPageState extends State<CartPage> {
             ),
           ),
         ),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Cart'),
-            Text(
-              'Total: \$${calculateTotalPrice().toStringAsFixed(2)}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+        title: Text('Cart'),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        // Center the content vertically
-        children: [
-          if (cartItems.isEmpty) // Show the message when cart is empty
-            Center(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: cartStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(
               child: Text(
                 'Your cart is empty.',
                 style: TextStyle(fontSize: 18),
               ),
-            ),
-          if (cartItems.isNotEmpty) // Show the cart items if not empty
-            Expanded(
-              child: ListView.builder(
-                itemCount: cartItems.length,
-                itemBuilder: (context, index) {
-                  final cartItem = cartItems[index];
-                  return ListTile(
-                    leading: Image.network(cartItem['image']),
-                    title: Text(cartItem['title']),
-                    subtitle: Text('\$${cartItem['price']}'),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        _removeCartItem(cartItem['productId']);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          if (cartItems
-              .isNotEmpty) // Show the button only if the cart is not empty
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  // You can add your checkout logic here
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text('Checkout Confirmation'),
-                        content: Text(
-                            'Are you sure you want to proceed with the checkout?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              // Add logic to complete the checkout
-                            },
-                            child: Text('Yes'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('No'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
+            );
+          }
+
+          final cartItems = snapshot.data!;
+          final totalPrice = calculateTotalPrice(cartItems);
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Checkout',
+                  'Total: \$${totalPrice.toStringAsFixed(2)}',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                // style: ElevatedButton.styleFrom(
-                //   // primary:
-                //   //     Color(0xff4A4E69), // Change the button color as desired
-                // ),
               ),
-            ),
-        ],
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final cartItem = cartItems[index];
+                    return ListTile(
+                      // leading: Image.network(cartItem['image']),
+                      title: Text(cartItem['title']),
+                      subtitle: Text('\$${cartItem['price']}'),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          _removeCartItem(cartItem['id']);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text('Checkout Confirmation'),
+                          content: Text(
+                              'Are you sure you want to proceed with the checkout?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                // Add your checkout logic here
+                              },
+                              child: Text('Yes'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('No'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Text(
+                    'Checkout',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
