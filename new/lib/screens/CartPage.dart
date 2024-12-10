@@ -26,10 +26,19 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+  void _updateQuantity(String itemId, int newQuantity) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await DatabaseHelper().updateCartItemQuantity(user.uid, itemId, newQuantity);
+    }
+  }
+
   double calculateTotalPrice(List<Map<String, dynamic>> cartItems) {
     double totalPrice = 0.0;
     for (final cartItem in cartItems) {
-      totalPrice += cartItem['price'] ?? 0.0;
+      final price = cartItem['price'] ?? 0.0;
+      final quantity = cartItem['quantity'] ?? 1;
+      totalPrice += price * quantity;
     }
     return totalPrice;
   }
@@ -53,7 +62,7 @@ class _CartPageState extends State<CartPage> {
         ),
         title: Text('Cart'),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: StreamBuilder<List<Map<String, dynamic>>>( 
         stream: cartStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -88,15 +97,38 @@ class _CartPageState extends State<CartPage> {
                   itemCount: cartItems.length,
                   itemBuilder: (context, index) {
                     final cartItem = cartItems[index];
+                    final itemId = cartItem['id'];
+                    final itemPrice = cartItem['price'] ?? 0.0;
+                    final itemQuantity = cartItem['quantity'] ?? 1;
+
                     return ListTile(
-                      // leading: Image.network(cartItem['image']),
                       title: Text(cartItem['title']),
-                      subtitle: Text('\$${cartItem['price']}'),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () {
-                          _removeCartItem(cartItem['id']);
-                        },
+                      subtitle: Text('\$${itemPrice * itemQuantity}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.remove),
+                            onPressed: () {
+                              if (itemQuantity > 1) {
+                                _updateQuantity(itemId, itemQuantity - 1);
+                              }
+                            },
+                          ),
+                          Text('$itemQuantity'),
+                          IconButton(
+                            icon: Icon(Icons.add),
+                            onPressed: () {
+                              _updateQuantity(itemId, itemQuantity + 1);
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete),
+                            onPressed: () {
+                              _removeCartItem(itemId);
+                            },
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -136,7 +168,7 @@ class _CartPageState extends State<CartPage> {
                     'Checkout',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Colors.deepPurple,
                     ),
                   ),
                 ),

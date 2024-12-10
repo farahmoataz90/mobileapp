@@ -86,4 +86,20 @@ class DatabaseHelper {
       throw Exception('Error removing favorite: $e');
     }
   }
+
+
+  // Update the quantity of an item in the cart
+Future<void> updateCartItemQuantity(String userId, String itemId, int newQuantity) async {
+  try {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('cart')
+        .doc(itemId)
+        .update({'quantity': newQuantity});
+  } catch (e) {
+    throw Exception('Error updating cart item quantity: $e');
+  }
+}
+
 }
